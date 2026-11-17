@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab: Watch the agentic loop</title>
+<style>
+  :root {
+    --ink: #1f2328; --muted: #59636e; --line: #d8dee4; --bg: #ffffff; --soft: #f6f8fa;
+    --accent: #3b5bdb; --accent-soft: #edf2ff;
+    --plan: #5f3dc4; --act: #1971c2; --check: #2b8a3e; --adjust: #e67700; --ask: #c2255c; --done: #343a40;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 20px 18px 40px; }
+  h1 { font-size: 1.55rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 0 0 6px; }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { margin: 0 0 10px; }
+  .sub { color: var(--muted); font-size: .92rem; margin-bottom: 18px; }
+  .banner { background: #fff4e6; border: 1px solid #ffc078; color: #7a3e00; border-radius: var(--radius);
+    padding: 10px 14px; margin-bottom: 16px; font-size: .9rem; }
+  .card { border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 18px; }
+  .step-label { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .req { background: var(--soft); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; }
+  .req .tag { font-size: .78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .req blockquote { margin: 6px 0 12px; padding-left: 10px; border-left: 3px solid var(--line); font-style: italic; }
+  .reply { margin-top: 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: .94rem; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent);
+    color: #fff; padding: 8px 14px; }
+  button.ghost { background: #fff; color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible + span { outline: 3px solid #91a7ff; outline-offset: 2px; }
+  .q { margin-top: 14px; }
+  .opts { display: grid; gap: 8px; margin: 8px 0; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+  .opt:hover { background: var(--soft); }
+  .opt input { margin-top: 4px; }
+  .fb { border-radius: 8px; padding: 10px 12px; font-size: .94rem; margin-top: 8px; }
+  .fb.good { background: #ebfbee; border: 1px solid #8ce99a; }
+  .fb.try { background: #fff9db; border: 1px solid #ffe066; }
+
+  /* Loop ring */
+  .ring { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 16px; }
+  .ring .node { padding: 6px 12px; border-radius: 999px; border: 2px solid var(--line); font-weight: 600; font-size: .9rem; color: var(--muted); background: #fff; transition: all .2s; }
+  .ring .arrow { color: var(--muted); }
+  .ring .node.on { color: #fff; }
+  .ring .node[data-s="Plan"].on { background: var(--plan); border-color: var(--plan); }
+  .ring .node[data-s="Act"].on { background: var(--act); border-color: var(--act); }
+  .ring .node[data-s="Check"].on { background: var(--check); border-color: var(--check); }
+  .ring .node[data-s="Adjust"].on { background: var(--adjust); border-color: var(--adjust); }
+  .ring .node[data-s="Ask"].on { background: var(--ask); border-color: var(--ask); }
+  .ring .node[data-s="Done"].on { background: var(--done); border-color: var(--done); }
+  .ring .sep { width: 1px; height: 22px; background: var(--line); margin: 0 6px; }
+
+  .viewer { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .vhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; background: var(--soft); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; color: #fff; font-size: .8rem; font-weight: 700; }
+  .chip.Plan { background: var(--plan); } .chip.Act { background: var(--act); } .chip.Check { background: var(--check); }
+  .chip.Adjust { background: var(--adjust); } .chip.Ask { background: var(--ask); } .chip.Done { background: var(--done); }
+  .meta { color: var(--muted); font-size: .85rem; }
+  .vbody { padding: 16px; min-height: 180px; }
+  .explain { color: var(--muted); font-size: .9rem; border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 10px; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px; overflow: auto; font-size: .82rem; line-height: 1.45; margin: 8px 0 0; max-height: 280px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  :not(pre) > code { background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: .88em; }
+  .vfoot { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
+  .progress { flex: 1; height: 6px; background: var(--soft); border-radius: 99px; overflow: hidden; min-width: 80px; }
+  .progress > div { height: 100%; background: var(--accent); width: 0; transition: width .25s; }
+  .toggle { display: flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--muted); cursor: pointer; }
+  .md table { border-collapse: collapse; margin: 8px 0; font-size: .9rem; }
+  .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+  .md ul, .md ol { margin: 4px 0 10px; padding-left: 22px; }
+  .md h1, .md h2, .md h3, .md h4 { font-size: 1rem; margin: 10px 0 4px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0 4px; }
+  .stat { background: var(--soft); border-radius: var(--radius); padding: 12px; text-align: center; }
+  .stat b { display: block; font-size: 1.4rem; }
+  .stat span { color: var(--muted); font-size: .85rem; }
+  .done-msg { background: var(--accent-soft); border: 1px solid #bac8ff; border-radius: var(--radius); padding: 12px 14px; margin-top: 12px; }
+  .hidden { display: none !important; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div id="banner" class="banner hidden" role="note"></div>
+
+  <h1>Lab: Watch the agentic loop</h1>
+  <p class="sub" id="sub"></p>
+
+  <!-- PART 1 -->
+  <section class="card" aria-labelledby="p1">
+    <div class="step-label">Part 1 of 3</div>
+    <h2 id="p1">Same task, two requests</h2>
+    <p>Both requests went to Claude through the API. Claude was told to plan before acting. Reveal each plan, then answer the question.</p>
+    <div class="grid2">
+      <div class="req">
+        <span class="tag">Request A · vague</span>
+        <blockquote id="promptVague"></blockquote>
+        <button class="ghost" data-reveal="vague" aria-expanded="false" aria-controls="replyVague">Show Claude's plan</button>
+        <div class="reply md hidden" id="replyVague"></div>
+      </div>
+      <div class="req">
+        <span class="tag">Request B · specific</span>
+        <blockquote id="promptSpecific"></blockquote>
+        <button class="ghost" data-reveal="specific" aria-expanded="false" aria-controls="replySpecific">Show Claude's plan</button>
+        <div class="reply md hidden" id="replySpecific"></div>
+      </div>
+    </div>
+    <fieldset class="q" style="border:0;padding:0;margin-top:14px">
+      <legend><b>Which request let Claude start planning right away, and why?</b></legend>
+      <div class="opts" id="q1"></div>
+      <div id="q1fb" aria-live="polite"></div>
+    </fieldset>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="card" aria-labelledby="p2">
+    <div class="step-label">Part 2 of 3</div>
+    <h2 id="p2">Step through the agentic loop</h2>
+    <p>Claude was handed Request B and three tools: <code>list_files</code>, <code>read_file</code> and <code>ask_user</code>. Below is every step it took, in order. Watch the loop light up as it goes.</p>
+    <div class="ring" aria-hidden="true">
+      <span class="node" data-s="Plan">Plan</span><span class="arrow">→</span>
+      <span class="node" data-s="Act">Act</span><span class="arrow">→</span>
+      <span class="node" data-s="Check">Check</span><span class="arrow">→</span>
+      <span class="node" data-s="Adjust">Adjust</span><span class="arrow">↺</span>
+      <span class="sep"></span>
+      <span class="node" data-s="Ask">Ask you</span>
+      <span class="node" data-s="Done">Done</span>
+    </div>
+    <div class="viewer">
+      <div class="vhead">
+        <div><span class="chip" id="vchip"></span> <b id="vtitle"></b></div>
+        <span class="meta" id="vmeta"></span>
+      </div>
+      <div class="vbody" id="vbody" aria-live="polite" tabindex="-1"></div>
+      <div class="vfoot">
+        <button class="ghost" id="prev">← Back</button>
+        <div class="progress" role="progressbar" aria-label="Steps viewed" aria-valuemin="0" aria-valuemax="100" id="pbar"><div id="pfill"></div></div>
+        <label class="toggle"><input type="checkbox" id="raw"> <span>Show API view</span></label>
+        <button id="next">Next →</button>
+      </div>
+    </div>
+    <p class="meta" style="margin-top:8px">Tip: use the ← and → arrow keys when the viewer has focus.</p>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="card" aria-labelledby="p3">
+    <div class="step-label">Part 3 of 3</div>
+    <h2 id="p3">What just happened?</h2>
+    <div id="p3locked" class="meta">Finish stepping through Part 2 to unlock this part.</div>
+    <div id="p3body" class="hidden">
+      <div class="stats">
+        <div class="stat"><b id="sTurns"></b><span>turns of the loop</span></div>
+        <div class="stat"><b id="sTools"></b><span>tool calls</span></div>
+        <div class="stat"><b id="sTokens"></b><span>tokens used</span></div>
+      </div>
+      <fieldset class="q" style="border:0;padding:0">
+        <legend><b>The September file had ratings but no comments. Which step of the loop caught that?</b></legend>
+        <div class="opts" id="q2"></div>
+        <div id="q2fb" aria-live="polite"></div>
+      </fieldset>
+      <div id="doneMsg" class="done-msg hidden" role="status">
+        <b>Lab complete.</b> You saw a real agent plan, act through tools, check each result, and stop to ask you when only you could decide. That's the same loop Claude runs when you hand it a task.
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* Real data is injected here by capture_lab_data.py. */
+const LAB_DATA = /*__LAB_DATA__*/null;
+
+/* Preview data, written by hand so the page works before you run the script.
+   It is NOT real Claude output. The banner says so whenever it is in use. */
+const SAMPLE = {
+  isSample: true, model: "preview", capturedAt: "",
+  comparison: {
+    vague: { prompt: "Look into our customer feedback.",
+      response: "Before I start, a few questions:\n\n1. What should I look for: themes, sentiment, specific issues?\n2. Which time period?\n3. What should the output be, and who is it for?\n\nOnce I know that, I'll list the files and plan the analysis." },
+    specific: { prompt: "Summarize our Q3 customer feedback into a one-page brief for my manager: the top three themes, how many comments mention each, and one short quote per theme. Use only the files in the feedback folder.",
+      response: "Plan:\n\n1. List the files in the feedback folder.\n2. Read each Q3 file.\n3. Group comments into themes and count them.\n4. Pick the top three themes and one quote for each.\n5. Draft a one-page brief for your manager.\n\nNo questions yet. I'll flag anything unexpected as I go." }
+  },
+  loop: { turns: 5, usage: { input: 9800, output: 1150 }, steps: [
+    { turn: 1, stage: "Plan", kind: "text", text: "Plan:\n1. List the feedback files.\n2. Read each Q3 file.\n3. Group and count themes.\n4. Draft the brief." },
+    { turn: 1, stage: "Act", kind: "tool_call", tool: "list_files", input: {}, raw: { type: "tool_use", id: "toolu_sample1", name: "list_files", input: {} } },
+    { turn: 1, stage: "Check", kind: "tool_result", tool: "list_files", output: "q3_july.csv\nq3_august.csv\nq3_september.csv" },
+    { turn: 2, stage: "Adjust", kind: "text", text: "Three monthly files, as expected. Plan unchanged. Reading July first." },
+    { turn: 2, stage: "Act", kind: "tool_call", tool: "read_file", input: { name: "q3_july.csv" }, raw: { type: "tool_use", id: "toolu_sample2", name: "read_file", input: { name: "q3_july.csv" } } },
+    { turn: 2, stage: "Check", kind: "tool_result", tool: "read_file", output: "id,rating,comment\n101,2,The dashboard takes forever to load in the mornings\n102,5,Support fixed my issue in ten minutes - amazing\n103,3,I was charged twice and the invoice page is confusing\n104,2,Pages load slowly when I filter reports\n105,4,Love the new export button\n106,1,Mobile app crashes every time I upload a photo" },
+    { turn: 3, stage: "Act", kind: "tool_call", tool: "read_file", input: { name: "q3_september.csv" }, raw: { type: "tool_use", id: "toolu_sample3", name: "read_file", input: { name: "q3_september.csv" } } },
+    { turn: 3, stage: "Check", kind: "tool_result", tool: "read_file", output: "id,rating\n301,3\n302,2\n303,4\n304,2\n305,5\n306,3" },
+    { turn: 4, stage: "Adjust", kind: "text", text: "September has ratings but no comments column, so I can't pull themes from it. That changes the plan. I'll ask how you want it handled." },
+    { turn: 4, stage: "Ask", kind: "tool_call", tool: "ask_user", input: { question: "The September file has ratings but no comments. Should I leave it out of the themes, or include its ratings somehow?" }, raw: { type: "tool_use", id: "toolu_sample4", name: "ask_user", input: { question: "The September file has ratings but no comments. Should I leave it out of the themes, or include its ratings somehow?" } } },
+    { turn: 4, stage: "Check", kind: "tool_result", tool: "ask_user", from_user: true, output: "Good catch. Leave September out of the themes, but mention its average rating in one line so my manager knows it exists." },
+    { turn: 5, stage: "Done", kind: "text", text: "## Q3 Customer Feedback Brief\n\n**Top themes (July–August, 12 comments)**\n\n| Theme | Mentions | Quote |\n|---|---|---|\n| Slow load times | 4 | \"Reports take a minute to open\" |\n| Great support | 3 | \"Support fixed my issue in ten minutes\" |\n| Billing confusion | 2 | \"The invoice page is confusing\" |\n\n**Note:** September has ratings only (average 3.2), so it isn't included in the themes." }
+  ]}
+};
+
+const D = LAB_DATA || SAMPLE;
+const $ = (id) => document.getElementById(id);
+
+/* ---------- tiny safe Markdown renderer ---------- */
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function inline(s) {
+  return esc(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<i>$2</i>");
+}
+function md(src) {
+  const lines = String(src || "").replace(/\r/g, "").split("\n");
+  let html = "", list = null, i = 0;
+  const close = () => { if (list) { html += `</${list}>`; list = null; } };
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
+      close();
+      const row = (r) => r.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      html += "<table><thead><tr>" + row(l).map(c => `<th>${inline(c)}</th>`).join("") + "</tr></thead><tbody>";
+      i += 2;
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { html += "<tr>" + row(lines[i]).map(c => `<td>${inline(c)}</td>`).join("") + "</tr>"; i++; }
+      html += "</tbody></table>"; continue;
+    }
+    let m;
+    if ((m = l.match(/^(#{1,4})\s+(.*)/))) { close(); html += `<h${m[1].length + 1}>${inline(m[2])}</h${m[1].length + 1}>`; }
+    else if ((m = l.match(/^\s*[-*]\s+(.*)/))) { if (list !== "ul") { close(); html += "<ul>"; list = "ul"; } html += `<li>${inline(m[1])}</li>`; }
+    else if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== "ol") { close(); html += "<ol>"; list = "ol"; } html += `<li>${inline(m[1])}</li>`; }
+    else if (!l.trim()) { close(); }
+    else { close(); html += `<p>${inline(l)}</p>`; }
+    i++;
+  }
+  close();
+  return html;
+}
+
+/* ---------- header ---------- */
+if (D.isSample) {
+  $("banner").classList.remove("hidden");
+  $("banner").textContent = "Preview data: these responses were written by hand to show the layout. They are not real Claude output. Run capture_lab_data.py to replace them with real API responses before you publish.";
+  $("sub").textContent = "Preview mode";
+} else {
+  $("sub").textContent = `Real responses from the Claude API (${D.model}), captured ${D.capturedAt}. Nothing is called live while you take this lab.`;
+}
+
+/* ---------- completion tracking ---------- */
+const state = { q1: false, reachedEnd: false, q2: false, sent: false };
+function checkComplete() {
+  if (state.q1 && state.reachedEnd && state.q2 && !state.sent) {
+    state.sent = true;
+    $("doneMsg").classList.remove("hidden");
+    try { window.parent.postMessage({ type: "complete" }, "*"); } catch (e) { /* not in Rise */ }
+  }
+}
+
+/* ---------- quiz helper ---------- */
+function quiz(containerId, fbId, options, onCorrect) {
+  const box = $(containerId);
+  options.forEach((o, idx) => {
+    const lab = document.createElement("label");
+    lab.className = "opt";
+    lab.innerHTML = `<input type="radio" name="${containerId}" value="${idx}"><span>${esc(o.text)}</span>`;
+    lab.querySelector("input").addEventListener("change", () => {
+      $(fbId).innerHTML = `<div class="fb ${o.correct ? "good" : "try"}">${o.correct ? "<b>Right.</b> " : "<b>Not quite.</b> "}${esc(o.fb)}</div>`;
+      if (o.correct) onCorrect();
+    });
+    box.appendChild(lab);
+  });
+}
+
+/* ---------- Part 1 ---------- */
+$("promptVague").textContent = D.comparison.vague.prompt;
+$("promptSpecific").textContent = D.comparison.specific.prompt;
+$("replyVague").innerHTML = md(D.comparison.vague.response);
+$("replySpecific").innerHTML = md(D.comparison.specific.response);
+document.querySelectorAll("[data-reveal]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const el = btn.dataset.reveal === "vague" ? $("replyVague") : $("replySpecific");
+    const open = el.classList.toggle("hidden") === false;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide Claude's plan" : "Show Claude's plan";
+  });
+});
+quiz("q1", "q1fb", [
+  { text: "Request A, because a short request gives Claude more freedom.", correct: false,
+    fb: "Freedom without a goal means Claude has to stop and ask what you want first. Look at how Request A's plan opens with questions." },
+  { text: "Request B, because it names the outcome, the audience, the format and the limits.", correct: true,
+    fb: "A clear outcome plus context lets Claude plan immediately. You describe the result, and Claude works out the steps." },
+  { text: "Neither. Claude needs a step-by-step script for every task.", correct: false,
+    fb: "Scripting every step turns an agent back into a fixed workflow. Agents plan their own steps once the goal is clear." }
+], () => { state.q1 = true; checkComplete(); });
+
+/* ---------- Part 2: step viewer ---------- */
+const steps = D.loop.steps;
+let cur = 0, maxSeen = 0;
+const EXPLAIN = {
+  Plan: "Claude breaks the goal into steps before touching any tools.",
+  Act: "Claude acts by calling a tool. In the API, this is a tool_use block: Claude names the tool and its inputs, and your code runs it.",
+  Check: "The tool's real result goes back to Claude. Anthropic calls this getting \"ground truth\" from the environment.",
+  Adjust: "Claude compares what it found with its plan, and keeps going or changes course.",
+  Ask: "Only you can make this call, so Claude pauses and asks instead of guessing. This is a human checkpoint.",
+  Done: "The task is complete, so the loop stops. In the API, the response ends with stop_reason \"end_turn\" instead of \"tool_use\"."
+};
+function titleFor(s) {
+  if (s.kind === "tool_call") return s.tool === "ask_user" ? "Claude asks you a question" : `Claude calls ${s.tool}`;
+  if (s.kind === "tool_result") return s.from_user ? "Your answer goes back to Claude" : `Result of ${s.tool}`;
+  return { Plan: "Claude makes a plan", Adjust: "Claude reviews what it found", Done: "Claude delivers the result" }[s.stage] || "Claude";
+}
+function render() {
+  const s = steps[cur];
+  const showRaw = $("raw").checked;
+  $("vchip").className = "chip " + s.stage;
+  $("vchip").textContent = s.stage === "Ask" ? "Ask you" : s.stage;
+  $("vtitle").textContent = titleFor(s);
+  $("vmeta").textContent = `Step ${cur + 1} of ${steps.length} · Turn ${s.turn}`;
+  document.querySelectorAll(".ring .node").forEach(n => n.classList.toggle("on", n.dataset.s === s.stage));
+
+  let body = "";
+  if (s.kind === "text") {
+    body = `<div class="md">${md(s.text)}</div>`;
+    if (showRaw) body += `<pre><code>${esc(JSON.stringify({ type: "text", text: s.text }, null, 2))}</code></pre>`;
+  } else if (s.kind === "tool_call") {
+    if (s.tool === "ask_user") body = `<p><b>Claude:</b> “${esc(s.input.question || "")}”</p>`;
+    else body = `<p>Claude chose the <code>${esc(s.tool)}</code> tool${Object.keys(s.input || {}).length ? " with these inputs:" : " (no inputs needed)."}</p>` +
+      (Object.keys(s.input || {}).length ? `<pre><code>${esc(JSON.stringify(s.input, null, 2))}</code></pre>` : "");
+    if (showRaw) body += `<p class="meta" style="margin-top:10px">Content block in Claude's API response:</p><pre><code>${esc(JSON.stringify(s.raw, null, 2))}</code></pre>`;
+  } else {
+    body = s.from_user ? `<p><b>You:</b> “${esc(s.output)}”</p>` : `<p>What the tool returned to Claude:</p><pre><code>${esc(s.output)}</code></pre>`;
+    if (showRaw) body += `<p class="meta" style="margin-top:10px">Sent back to Claude in the next request:</p><pre><code>${esc(JSON.stringify({ type: "tool_result", tool_use_id: "toolu_…", content: s.output }, null, 2))}</code></pre>`;
+  }
+  body += `<div class="explain"><b>${s.stage === "Ask" ? "Ask you" : s.stage}:</b> ${esc(EXPLAIN[s.stage] || "")}</div>`;
+  $("vbody").innerHTML = body;
+
+  maxSeen = Math.max(maxSeen, cur);
+  const pct = Math.round(((maxSeen + 1) / steps.length) * 100);
+  $("pfill").style.width = pct + "%";
+  $("pbar").setAttribute("aria-valuenow", pct);
+  $("prev").disabled = cur === 0;
+  $("next").disabled = cur === steps.length - 1;
+  if (cur === steps.length - 1 && !state.reachedEnd) { state.reachedEnd = true; unlockPart3(); }
+}
+$("prev").addEventListener("click", () => { if (cur > 0) { cur--; render(); } });
+$("next").addEventListener("click", () => { if (cur < steps.length - 1) { cur++; render(); } });
+$("raw").addEventListener("change", render);
+document.querySelector(".viewer").addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowRight") { $("next").click(); e.preventDefault(); }
+  if (e.key === "ArrowLeft") { $("prev").click(); e.preventDefault(); }
+});
+render();
+
+/* ---------- Part 3 ---------- */
+function unlockPart3() {
+  $("p3locked").classList.add("hidden");
+  $("p3body").classList.remove("hidden");
+  const u = D.loop.usage || { input: 0, output: 0 };
+  $("sTurns").textContent = D.loop.turns;
+  $("sTools").textContent = steps.filter(s => s.kind === "tool_call").length;
+  $("sTokens").textContent = (u.input + u.output).toLocaleString();
+  checkComplete();
+}
+quiz("q2", "q2fb", [
+  { text: "Plan. Claude predicted the problem before reading any files.", correct: false,
+    fb: "Claude couldn't know about the missing column until it opened the file. Plans are made before the evidence comes in." },
+  { text: "Check. Claude looked at the real file contents, saw the missing column, and adjusted or asked.", correct: true,
+    fb: "The Check step is what makes an agent reliable. It reads the real results and doesn't assume each step worked." },
+  { text: "Done. Claude only noticed while writing the final brief.", correct: false,
+    fb: "Step back through Part 2: the problem was caught right after the file was read, well before the brief." }
+], () => { state.q2 = true; checkComplete(); });
+</script>
+</body>
+</html>
