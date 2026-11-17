@@ -113,7 +113,7 @@
       </div>
     </div>
     <fieldset class="q" style="border:0;padding:0;margin-top:14px">
-      <legend><b>Which request let Claude start planning right away, and why?</b></legend>
+      <legend><b>Which request gave Claude enough to make a concrete plan, and why?</b></legend>
       <div class="opts" id="q1"></div>
       <div id="q1fb" aria-live="polite"></div>
     </fieldset>
@@ -161,12 +161,12 @@
         <div class="stat"><b id="sTokens"></b><span>tokens used</span></div>
       </div>
       <fieldset class="q" style="border:0;padding:0">
-        <legend><b>The September file had ratings but no comments. Which step of the loop caught that?</b></legend>
+        <legend><b>The September file had ratings but no comments. How did Claude handle it?</b></legend>
         <div class="opts" id="q2"></div>
         <div id="q2fb" aria-live="polite"></div>
       </fieldset>
       <div id="doneMsg" class="done-msg hidden" role="status">
-        <b>Lab complete.</b> You saw a real agent plan, act through tools, check each result, and stop to ask you when only you could decide. That's the same loop Claude runs when you hand it a task.
+        <b>Lab complete.</b> You saw a real agent plan, act through tools, check each real result, and adjust when something didn't match the plan. That's the same loop Claude runs when you hand it a task.
       </div>
     </div>
   </section>
@@ -288,9 +288,9 @@ document.querySelectorAll("[data-reveal]").forEach(btn => {
 });
 quiz("q1", "q1fb", [
   { text: "Request A, because a short request gives Claude more freedom.", correct: false,
-    fb: "Freedom without a goal means Claude has to stop and ask what you want first. Look at how Request A's plan opens with questions." },
+    fb: "Look at Request A's questions: Claude has to ask what you want before its plan can be specific. Freedom without a goal costs a round of back-and-forth." },
   { text: "Request B, because it names the outcome, the audience, the format and the limits.", correct: true,
-    fb: "A clear outcome plus context lets Claude plan immediately. You describe the result, and Claude works out the steps." },
+    fb: "Compare the questions. Request A's ask what the goal even is. Request B's only cover details, so its plan is concrete from step one." },
   { text: "Neither. Claude needs a step-by-step script for every task.", correct: false,
     fb: "Scripting every step turns an agent back into a fixed workflow. Agents plan their own steps once the goal is clear." }
 ], () => { state.q1 = true; checkComplete(); });
@@ -365,12 +365,12 @@ function unlockPart3() {
   checkComplete();
 }
 quiz("q2", "q2fb", [
-  { text: "Plan. Claude predicted the problem before reading any files.", correct: false,
-    fb: "Claude couldn't know about the missing column until it opened the file. Plans are made before the evidence comes in." },
-  { text: "Check. Claude looked at the real file contents, saw the missing column, and adjusted or asked.", correct: true,
-    fb: "The Check step is what makes an agent reliable. It reads the real results and doesn't assume each step worked." },
-  { text: "Done. Claude only noticed while writing the final brief.", correct: false,
-    fb: "Step back through Part 2: the problem was caught right after the file was read, well before the brief." }
+  { text: "It skipped the file without mentioning it.", correct: false,
+    fb: "Step back through Part 2. Claude didn't hide the problem: it said what was missing in the steps or in its final answer." },
+  { text: "It checked the real file contents, saw the missing column, and adjusted instead of guessing.", correct: true,
+    fb: "That's the Check → Adjust part of the loop. Claude reads the real results rather than assuming each step worked, then changes course: it asks you, or leaves the file out and says so." },
+  { text: "It invented comments for September so the counts would include it.", correct: false,
+    fb: "Nothing in the brief comes from September comments. Claude worked only from what the tools actually returned." }
 ], () => { state.q2 = true; checkComplete(); });
 </script>
 </body>
